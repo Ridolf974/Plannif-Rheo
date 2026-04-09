@@ -1,0 +1,376 @@
+[
+  {
+    "id": "t1",
+    "category": "feedback",
+    "priority": "critical",
+    "status": "done",
+    "dateEcheance": "2026-04-09",
+    "dateRetour": "2026-04-09",
+    "dateTravail": "2026-04-10",
+    "tags": [
+      "terrain",
+      "UX"
+    ],
+    "notes": "",
+    "title": "Recolter les feedbacks - essai equipe J1",
+    "description": "Premiere mise en production reelle de RheoPlan. Capturer tous les retours a chaud.",
+    "context": {
+      "situation": "L'application est fonctionnelle sur clinifutur.net. L'equipe l'utilise pour la premiere fois en conditions reelles (8 avril 2026).",
+      "pourquoi": "Les bugs et frictions qui emergent sur le terrain sont souvent differents de ceux qu'on anticipe en dev. Cette session J1 est irremplaçable.",
+      "comment": [
+        "Observer l'equipe - noter hesitations, erreurs, questions a voix haute",
+        "Lister chaque friction rencontree",
+        "Collecter les bugs techniques",
+        "Noter les demandes spontanees",
+        "Photographier les ecrans si bug visible",
+        "Compte-rendu ecrit avant la fin de la soiree"
+      ],
+      "ameliore": "Liste exhaustive et priorisee des correctifs pour que l'app soit utilisable au quotidien."
+    }
+  },
+  {
+    "id": "t2",
+    "category": "feedback",
+    "priority": "high",
+    "status": "todo",
+    "dateEcheance": "2026-04-11",
+    "dateRetour": "2026-04-11",
+    "dateTravail": "2026-04-12",
+    "tags": [
+      "terrain",
+      "planning"
+    ],
+    "notes": "",
+    "title": "Synthese feedbacks et priorisation post-J1",
+    "description": "Transformer les retours bruts de l'equipe en une liste de correctifs classes par impact et urgence.",
+    "context": {
+      "situation": "Apres J1, on a une liste heterogene : bug critique, friction mineure, idee future, incomprehension UX.",
+      "pourquoi": "Sans synthese structuree, on risque de traiter un detail cosmetique avant un bug bloquant.",
+      "comment": [
+        "Regrouper par nature : BUG BLOQUANT / FRICTION UX / AMELIORATION / IDEE FUTURE",
+        "Pour chaque bug : frequence, contexte exact, etapes pour reproduire",
+        "Mettre a jour ce tracker avec les nouvelles taches issues des retours",
+        "Marquer Critique tout ce qui empeche l'utilisation normale",
+        "Partager la synthese avec Claude pour planifier les correctifs"
+      ],
+      "ameliore": "Plan de travail clair avec les correctifs urgents traites en premier."
+    }
+  },
+  {
+    "id": "t3",
+    "category": "feedback",
+    "priority": "critical",
+    "status": "waiting",
+    "dateEcheance": "2026-04-12",
+    "dateRetour": "2026-04-10",
+    "dateTravail": "2026-04-11",
+    "tags": [
+      "index.html",
+      "bugfix"
+    ],
+    "notes": "A remplir apres les retours de ce soir",
+    "title": "Corriger les bugs remontes J1",
+    "description": "Placeholder pour les correctifs issus de la session d'essai du 8 avril. A definir apres retour terrain.",
+    "context": {
+      "situation": "On ne sait pas encore ce qui va remonter. Tache creee a l'avance pour ne pas oublier.",
+      "pourquoi": "Les bugs terrain doivent etre traites rapidement. La reactivite sur J1 est essentielle pour l'adhesion de l'equipe.",
+      "comment": [
+        "Mettre a jour la description avec le detail des bugs apres J1",
+        "Pour chaque bug : reproduire, noter le fichier concerne (index.html ou Code.gs)",
+        "Decrire precisement a Claude : comportement attendu vs observe + etapes pour reproduire",
+        "Si Code.gs modifie : Nouveau deploiement obligatoire",
+        "Si index.html seul : Mettre a jour suffit",
+        "Tester chaque correctif avant de marquer termine"
+      ],
+      "ameliore": "Stabilite et fiabilite - passe d'un prototype a un outil de confiance."
+    }
+  },
+  {
+    "id": "t4",
+    "category": "securite",
+    "priority": "high",
+    "status": "todo",
+    "dateEcheance": "2026-04-20",
+    "dateRetour": "2026-04-18",
+    "dateTravail": "2026-04-19",
+    "tags": [
+      "Code.gs",
+      "securite"
+    ],
+    "notes": "",
+    "title": "Renforcer le controle d'acces domaine",
+    "description": "Implementer une whitelist explicite des emails autorises plutot que le parametre de deploiement seul.",
+    "context": {
+      "situation": "Deploiement actuel : Tous les utilisateurs de clinifutur.net. N'importe qui avec un compte @clinifutur.net peut acceder, meme hors equipe rheo.",
+      "pourquoi": "Les donnees concernent des patients. Une whitelist est une barriere simple et efficace - bonne pratique RGPD de base.",
+      "comment": [
+        "Dans Code.gs : creer AUTHORIZED_EMAILS = ['email1@clinifutur.net', ...]",
+        "Dans getData() : verifier Session.getActiveUser().getEmail() contre la liste",
+        "Si non autorise : retourner { error: 'Acces non autorise' } + message clair dans l'UI",
+        "Option souple : liste dans un onglet Config du Sheet (modifiable sans redeployer)",
+        "Tester avec un compte non liste",
+        "Nouveau deploiement apres modification Code.gs"
+      ],
+      "ameliore": "Protection des donnees patients contre acces non autorises. Conformite RGPD basique."
+    }
+  },
+  {
+    "id": "t5",
+    "category": "securite",
+    "priority": "medium",
+    "status": "todo",
+    "dateEcheance": "2026-04-30",
+    "dateRetour": "2026-04-28",
+    "dateTravail": "2026-04-29",
+    "tags": [
+      "Code.gs",
+      "robustesse"
+    ],
+    "notes": "",
+    "title": "Gestion des conflits multi-utilisateurs",
+    "description": "Actuellement last-write-wins : si deux utilisateurs modifient la meme seance simultanement, la derniere ecriture ecrase la precedente sans avertissement.",
+    "context": {
+      "situation": "Pas de mecanisme de lock. Deux soignants pourraient modifier la meme seance en meme temps.",
+      "pourquoi": "Une seance validee qui disparait sans alerte est un probleme serieux en contexte de soins.",
+      "comment": [
+        "Ajouter une colonne UpdatedAt (timestamp) dans la feuille Sessions",
+        "Dans Code.gs/updateSlot : verifier que le timestamp client correspond au timestamp en base",
+        "Si decalage : retourner { conflict: true, currentData: {...} }",
+        "Dans index.html : modal Conflit detecte avec les deux versions cote a cote",
+        "Proposer : Conserver ma version / Charger la version actuelle"
+      ],
+      "ameliore": "Integrite des donnees en multi-utilisateurs. Zero perte silencieuse."
+    }
+  },
+  {
+    "id": "t6",
+    "category": "securite",
+    "priority": "medium",
+    "status": "todo",
+    "dateEcheance": "2026-05-05",
+    "dateRetour": "2026-05-03",
+    "dateTravail": "2026-05-04",
+    "tags": [
+      "Code.gs",
+      "securite",
+      "tracabilite"
+    ],
+    "notes": "",
+    "title": "Journal d'audit des actions destructives",
+    "description": "Logger dans un onglet dedie toutes les actions critiques avec timestamp et email de l'auteur.",
+    "context": {
+      "situation": "Aucune trace de qui a fait quoi et quand. Si une donnee disparait ou une action est faite par erreur, impossible de retrouver l'historique.",
+      "pourquoi": "Tracabilite fondamentale en contexte de soins. Exigence implicite de bonne pratique medicale.",
+      "comment": [
+        "Creer onglet Logs : Timestamp | Utilisateur | Action | EntiteType | EntiteID | Details",
+        "Creer logAction_(action, type, id, details) dans Code.gs",
+        "Appeler dans : deletePatient, stopCycle, closeCycle, deleteSession, cancelSession",
+        "Ne logger que les ecritures destructives",
+        "Logs consultables directement dans le Sheet"
+      ],
+      "ameliore": "Tracabilite complete. En cas d'erreur : on sait qui, quoi, quand."
+    }
+  },
+  {
+    "id": "t7",
+    "category": "ux",
+    "priority": "low",
+    "status": "todo",
+    "dateEcheance": "2026-05-15",
+    "dateRetour": "2026-05-10",
+    "dateTravail": "2026-05-12",
+    "tags": [
+      "index.html",
+      "CSS print"
+    ],
+    "notes": "",
+    "title": "Ameliorer l'export PDF (3 vues)",
+    "description": "Les 3 exports fonctionnent via window.print() mais la mise en page A4 est imparfaite.",
+    "context": {
+      "situation": "Export via window.print() + CSS A4 paysage. Fonctionnel dans Chrome mais grille peut etre coupee entre pages.",
+      "pourquoi": "L'export est utilise pour les bilans mensuels/annuels transmis a la direction. Un document mal mis en page nuit a la credibilite.",
+      "comment": [
+        "Auditer les 3 exports dans Chrome - noter ce qui est coupe ou mal aligne",
+        "Ajouter @page { size: A4 landscape; margin: 10mm; } dans CSS print",
+        "Utiliser page-break-inside: avoid sur cards stats et graphiques",
+        "Forcer max-height sur les graphiques Chart.js pour impression",
+        "Ajouter en-tete de page : etablissement, mois, date d'export",
+        "Tester les 3 exports et valider"
+      ],
+      "ameliore": "Exports PDF propres et professionnels, directement utilisables sans retouche manuelle."
+    }
+  },
+  {
+    "id": "t8",
+    "category": "ux",
+    "priority": "medium",
+    "status": "todo",
+    "dateEcheance": "2026-05-20",
+    "dateRetour": "2026-05-15",
+    "dateTravail": "2026-05-18",
+    "tags": [
+      "index.html",
+      "Code.gs"
+    ],
+    "notes": "",
+    "title": "Gestion complete des kits consommables",
+    "description": "L'onglet Kits existe mais la gestion UI est partielle. Finaliser l'assignation kit par seance.",
+    "context": {
+      "situation": "Onglet Kits dans le schema, checkbox Kit jete sur la seance - mais pas de gestion du stock, pas de numero de lot, pas de raison de jet structuree.",
+      "pourquoi": "Tracabilite des kits necessaire pour justifier les couts aupres de la direction et anticiper les commandes.",
+      "comment": [
+        "Definir le besoin avec l'equipe : champs par kit (lot, date peremption, raison, seance)",
+        "Dans Code.gs : enrichir les fonctions Kits avec les nouveaux champs",
+        "Dans index.html : enrichir la saisie Kit jete dans la modal seance",
+        "Dans Analyse : enrichir Kits jetes ce mois avec totaux par raison",
+        "Relancer initSheets() si nouvelles colonnes dans la feuille Kits"
+      ],
+      "ameliore": "Tracabilite complete des consommables couteux - justification couts, anticipation commandes."
+    }
+  },
+  {
+    "id": "t9",
+    "category": "qualite",
+    "priority": "high",
+    "status": "todo",
+    "dateEcheance": "2026-04-15",
+    "dateRetour": "2026-04-15",
+    "dateTravail": "2026-04-15",
+    "tags": [
+      "test",
+      "qualite"
+    ],
+    "notes": "",
+    "title": "Session chasse aux bugs #1 - scenario bout en bout",
+    "description": "Test systematique : creer patient, cycle, valider seances, annuler, desannuler, pause, reprise, cloture auto.",
+    "context": {
+      "situation": "Jamais eu de session de test bout en bout simulant plusieurs semaines reelles. Des regressions silencieuses peuvent exister.",
+      "pourquoi": "Certains bugs n'apparaissent qu'en conditions reelles - renumbering apres 3 annulations, compteur deraillant apres pause/reprise.",
+      "comment": [
+        "Creer un patient fictif PATIENT TEST SCENARIO",
+        "Creer cycle 12 seances frequence hebdomadaire",
+        "Valider 3 seances - verifier badges C1-S1, C1-S2, C1-S3",
+        "Annuler seance 4 - verifier que C1-S5 devient C1-S4, etc.",
+        "Desannuler seance 4 - verifier retour etat initial + suppression bonus",
+        "Pause puis verifier affichage barre. Reprise puis verifier EN_COURS",
+        "Valider jusqu'a 12 - verifier celebration + cloture auto",
+        "Nettoyer le patient de test"
+      ],
+      "ameliore": "Confiance totale dans la fiabilite du moteur cycle/badge/compteur."
+    }
+  },
+  {
+    "id": "t10",
+    "category": "qualite",
+    "priority": "medium",
+    "status": "todo",
+    "dateEcheance": "2026-04-15",
+    "dateRetour": "2026-04-14",
+    "dateTravail": "2026-04-14",
+    "tags": [
+      "documentation"
+    ],
+    "notes": "",
+    "title": "Mise a jour JOURNAL_TECHNIQUE.md - v17+",
+    "description": "Documenter les changements post-essai equipe : nouveaux bugs, decisions, vigilances decouvertes.",
+    "context": {
+      "situation": "Journal maintenu depuis v1, actuellement v16+. Documente erreurs, decisions d'architecture, points de vigilance. Memoire technique vivante du projet.",
+      "pourquoi": "Sans mise a jour reguliere, on risque de resoudre deux fois les memes bugs ou de reintroduire des regressions.",
+      "comment": [
+        "Apres chaque session significative : noter ERREUR - symptome, cause, solution",
+        "Documenter les decisions : pourquoi telle approche, alternatives ecartees",
+        "Mettre a jour la table des versions",
+        "Enrichir les points de vigilance si nouveaux pieges Apps Script/Sheets",
+        "Partager le journal avec Claude en debut de chaque session (fichier joint)"
+      ],
+      "ameliore": "Continuite du developpement. Chaque session repart sur une base documentee."
+    }
+  },
+  {
+    "id": "t11",
+    "category": "qualite",
+    "priority": "medium",
+    "status": "todo",
+    "dateEcheance": "2026-05-01",
+    "dateRetour": "2026-04-25",
+    "dateTravail": "2026-04-28",
+    "tags": [
+      "documentation",
+      "terrain"
+    ],
+    "notes": "",
+    "title": "Guide utilisateur pour l'equipe soignante",
+    "description": "Guide court et visuel (1-2 pages) : valider une seance, annuler, gerer un cycle, comprendre les badges.",
+    "context": {
+      "situation": "L'equipe ne connait pas les subtilites : badge C1-S3, difference pause vs arret cycle, que faire si patient absent.",
+      "pourquoi": "Sans guide, l'adoption repose sur la formation orale - fragile. Un mauvais geste irreversible (arreter au lieu de mettre en pause) supprime toutes les seances futures.",
+      "comment": [
+        "Identifier les 6-8 actions frequentes du quotidien",
+        "Captures d'ecran annotees pour chaque action",
+        "Expliquer en termes soignants : C1-S3 = Cycle 1 Seance 3 ; tandem = pendant dialyse",
+        "Section Que faire si : patient absent, erreur de saisie, seance a deplacer",
+        "Format : PDF 2 pages A4 imprimable",
+        "Claude peut generer le document Word/PDF une fois le contenu valide"
+      ],
+      "ameliore": "Autonomie de l'equipe, reduction des erreurs de manipulation, integration facilitee des nouveaux."
+    }
+  },
+  {
+    "id": "t12",
+    "category": "perf",
+    "priority": "low",
+    "status": "todo",
+    "dateEcheance": "2026-06-01",
+    "dateRetour": "2026-05-25",
+    "dateTravail": "2026-05-28",
+    "tags": [
+      "index.html",
+      "performance"
+    ],
+    "notes": "",
+    "title": "Optimiser le rechargement getData() post-action",
+    "description": "Sur annulation/desannulation, l'app declenche un getData() complet - lourd, creant un delai perceptible de 2-3 secondes.",
+    "context": {
+      "situation": "getData() charge toutes les feuilles en une fois. Sur 6 mois de donnees + 20 patients actifs : 2-3 secondes de freeze perceptible.",
+      "pourquoi": "En milieu soignant ou les gestes sont rapides, ce delai casse le rythme et peut inciter a recliquer.",
+      "comment": [
+        "Auditer quelles actions declenchent un getData() complet vs mise a jour locale",
+        "Identifier ou un rechargement partiel suffit",
+        "Option 1 : creer getSessionsOnly() et getCyclesOnly() dans Code.gs",
+        "Option 2 : hash existant pour ne declencher getData() que si donnees changees",
+        "Mesurer avant/apres avec les DevTools Chrome"
+      ],
+      "ameliore": "Interface fluide et reactive. Reste dans les quotas Apps Script (20 000 appels/jour)."
+    }
+  },
+  {
+    "id": "t13",
+    "category": "qualite",
+    "priority": "medium",
+    "status": "todo",
+    "dateEcheance": "2026-05-10",
+    "dateRetour": "2026-04-20",
+    "dateTravail": "2026-04-25",
+    "tags": [
+      "Code.gs",
+      "index.html",
+      "AUDIT"
+    ],
+    "notes": "3 questions a trancher avant tout code - voir contexte etape 1",
+    "title": "Statut ARRETE distinct de CLOTURE",
+    "description": "stopCycle et closeCycle ecrivent tous les deux CLOTURE dans le Sheet. Un cycle interrompu est indiscernable d'un cycle complete normalement.",
+    "context": {
+      "situation": "Deux actions UI distinctes ecrivent la meme valeur CLOTURE. Arret du cycle = interruption prematuree avec suppression des seances futures. Cloture = fin normale. Dans la donnee brute du Sheet, ces deux cas sont identiques.",
+      "pourquoi": "Cette confusion fausse les stats : taux de completion reel errone, impossible de savoir combien de cycles ont ete interrompus vs termines normalement.",
+      "comment": [
+        "QUESTIONS A TRANCHER EN PREMIER : (1) Differencier visuellement dans la liste des cycles ? badge couleur/libelle different ? (2) Impacte les compteurs stats ? (3) Bloquer certaines actions sur ARRETE vs CLOTURE ?",
+        "Ajouter la valeur ARRETE comme statut valide dans le Sheet",
+        "Modifier stopCycle() dans Code.gs pour ecrire ARRETE au lieu de CLOTURE",
+        "AUDIT CRITIQUE : parcourir tous les endroits qui testent === CLOTURE ou !== EN_COURS",
+        "Mettre a jour l'affichage du badge statut dans la liste des cycles",
+        "Nouveau deploiement + mettre a jour JOURNAL_TECHNIQUE.md"
+      ],
+      "ameliore": "Donnees fiables sur le cycle de vie reel des traitements. Stats mensuelles et annuelles plus pertinentes cliniquement."
+    }
+  }
+]
