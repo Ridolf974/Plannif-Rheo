@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RhéoPlan — Suivi Dev</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: #f8fafc; min-height: 100vh; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f5f9; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+    select, input, textarea, button { font-family: 'Outfit', sans-serif; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const STORAGE_KEY = "rheoPlan-tracker-v1";
+
+const INITIAL_TASKS = [
+  {
+    id:"t1", category:"feedback", priority:"critical", status:"todo",
+    dateEcheance:"2026-04-09", dateRetour:"2026-04-09", dateTravail:"2026-04-10",
+    tags:["terrain","UX"], notes:"",
+    title:"Récolter les feedbacks — essai équipe J1",
+    description:"Première mise en production réelle de RhéoPlan avec l'équipe soignante. Capturer tous les retours à chaud.",
+    context:{
+      situation:"L'application est fonctionnelle et vient d'être déployée sur clinifutur.net. L'équipe l'utilise pour la première fois en conditions réelles (8 avril 2026). Transition critique du mode dev vers le mode terrain.",
+      pourquoi:"Les bugs et frictions qui émergent sur le terrain sont souvent différents de ceux qu'on anticipe en dev. Cette session J1 est irremplaçable pour identifier ce qui bloque vraiment les soignants.",
+      comment:["Observer l'équipe — noter hésitations, erreurs, questions à voix haute","Lister chaque friction : 'je ne comprends pas cette icône', 'ce bouton n'a pas marché'","Collecter les bugs techniques : action qui ne se sauvegarde pas, affichage incorrect","Noter les demandes spontanées : 'ça serait bien si on pouvait...'","Photographier les écrans si un bug est visible","Compte-rendu écrit avant la fin de la soirée pendant que c'est frais"],
+      ameliore:"Liste exhaustive et priorisée des correctifs pour que l'app soit vraiment utilisable au quotidien."
+    }
+  },
+  {
+    id:"t2", category:"feedback", priority:"high", status:"todo",
+    dateEcheance:"2026-04-11", dateRetour:"2026-04-11", dateTravail:"2026-04-12",
+    tags:["terrain","planning"], notes:"",
+    title:"Synthèse feedbacks & priorisation post-J1",
+    description:"Transformer les retours bruts de l'équipe en une liste de correctifs classés par impact et urgence.",
+    context:{
+      situation:"Après J1, on a une liste hétérogène : bug critique, friction mineure, idée future, incompréhension UX. Tout n'a pas la même priorité ni le même effort.",
+      pourquoi:"Sans synthèse structurée, on risque de traiter un détail cosmétique avant un bug bloquant. La priorisation détermine l'ordre des sessions de travail.",
+      comment:["Regrouper par nature : BUG BLOQUANT / FRICTION UX / AMÉLIORATION / IDÉE FUTURE","Pour chaque bug : fréquence, contexte exact, étapes pour reproduire","Mettre à jour ce tracker avec les nouvelles tâches issues des retours","Marquer 'Critique' tout ce qui empêche l'utilisation normale","Partager la synthèse avec Claude pour planifier les correctifs"],
+      ameliore:"Plan de travail clair avec les correctifs urgents traités en premier."
+    }
+  },
+  {
+    id:"t3", category:"feedback", priority:"critical", status:"waiting",
+    dateEcheance:"2026-04-12", dateRetour:"2026-04-10", dateTravail:"2026-04-11",
+    tags:["index.html","bugfix"], notes:"À remplir après les retours de ce soir",
+    title:"Corriger les bugs remontés J1",
+    description:"Placeholder pour les correctifs issus de la session d'essai du 8 avril. Contenu à définir après retour terrain.",
+    context:{
+      situation:"On ne sait pas encore ce qui va remonter. Tâche créée à l'avance pour ne pas oublier dans le feu de l'action post-session.",
+      pourquoi:"Les bugs terrain doivent être traités rapidement. La réactivité sur J1 est essentielle pour l'adhésion de l'équipe à l'outil.",
+      comment:["Mettre à jour la description avec le détail des bugs après J1","Pour chaque bug : reproduire, noter le fichier concerné (index.html ou Code.gs)","Décrire précisément à Claude : comportement attendu vs observé + étapes pour reproduire","Si Code.gs modifié : Nouveau déploiement obligatoire","Si index.html seul : Mettre à jour suffit","Tester chaque correctif avant de marquer terminé"],
+      ameliore:"Stabilité et fiabilité — passe d'un prototype à un outil de confiance."
+    }
+  },
+  {
+    id:"t4", category:"securite", priority:"high", status:"todo",
+    dateEcheance:"2026-04-20", dateRetour:"2026-04-18", dateTravail:"2026-04-19",
+    tags:["Code.gs","sécurité"], notes:"",
+    title:"Renforcer le contrôle d'accès domaine",
+    description:"Implémenter une whitelist explicite des emails autorisés plutôt que de s'appuyer uniquement sur le paramètre de déploiement Apps Script.",
+    context:{
+      situation:"Déploiement actuel : 'Tous les utilisateurs de clinifutur.net'. N'importe qui avec un compte @clinifutur.net peut accéder, même hors équipe rhéo.",
+      pourquoi:"Les données concernent des patients. Une whitelist est une barrière simple, rapide et efficace — bonne pratique RGPD de base.",
+      comment:["Dans Code.gs : créer AUTHORIZED_EMAILS = ['email1@clinifutur.net', ...]","Dans getData() : vérifier Session.getActiveUser().getEmail() contre la liste","Si non autorisé : retourner { error: 'Accès non autorisé' } + message clair dans l'UI","Option souple : liste dans un onglet 'Config' du Sheet (modifiable sans redéployer)","Tester avec un compte non listé","Nouveau déploiement après modification Code.gs"],
+      ameliore:"Protection des données patients contre accès non autorisés. Conformité RGPD basique."
+    }
+  },
+  {
+    id:"t5", category:"securite", priority:"medium", status:"todo",
+    dateEcheance:"2026-04-30", dateRetour:"2026-04-28", dateTravail:"2026-04-29",
+    tags:["Code.gs","robustesse"], notes:"",
+    title:"Gestion des conflits multi-utilisateurs",
+    description:"Actuellement last-write-wins : si deux utilisateurs modifient la même séance simultanément, la dernière écriture écrase la précédente sans avertissement.",
+    context:{
+      situation:"Pas de mécanisme de lock. Deux soignants pourraient modifier la même séance en même temps — la donnée la plus récente écrase silencieusement l'autre.",
+      pourquoi:"Une séance validée qui disparaît sans alerte est un problème sérieux en contexte de soins — impact facturation et suivi patient.",
+      comment:["Ajouter une colonne 'UpdatedAt' (timestamp) dans la feuille Sessions","Dans Code.gs/updateSlot : vérifier que le timestamp client correspond au timestamp en base","Si décalage : retourner { conflict: true, currentData: {...} }","Dans index.html : modal 'Conflit détecté' avec les deux versions côte à côte","Proposer : 'Conserver ma version' / 'Charger la version actuelle'"],
+      ameliore:"Intégrité des données en multi-utilisateurs. Zéro perte silencieuse."
+    }
+  },
+  {
+    id:"t6", category:"securite", priority:"medium", status:"todo",
+    dateEcheance:"2026-05-05", dateRetour:"2026-05-03", dateTravail:"2026-05-04",
+    tags:["Code.gs","sécurité","traçabilité"], notes:"",
+    title:"Journal d'audit des actions destructives",
+    description:"Logger dans un onglet dédié toutes les actions critiques : suppression patient, arrêt/clôture cycle. Avec timestamp et email de l'auteur.",
+    context:{
+      situation:"Aucune trace de qui a fait quoi et quand. Si une donnée disparaît ou une action est faite par erreur, impossible de retrouver l'historique.",
+      pourquoi:"Traçabilité fondamentale en contexte de soins. Exigence implicite de bonne pratique médicale.",
+      comment:["Créer onglet 'Logs' : Timestamp | Utilisateur | Action | EntiteType | EntiteID | Details","Créer logAction_(action, type, id, details) dans Code.gs","Appeler dans : deletePatient, stopCycle, closeCycle, deleteSession, cancelSession","Ne logger que les écritures destructives","Logs consultables directement dans le Sheet"],
+      ameliore:"Traçabilité complète. En cas d'erreur : on sait qui, quoi, quand."
+    }
+  },
+  {
+    id:"t7", category:"ux", priority:"low", status:"todo",
+    dateEcheance:"2026-05-15", dateRetour:"2026-05-10", dateTravail:"2026-05-12",
+    tags:["index.html","CSS print"], notes:"",
+    title:"Améliorer l'export PDF (3 vues)",
+    description:"Les 3 exports fonctionnent via window.print() mais la mise en page A4 est imparfaite — éléments coupés, graphiques mal ajustés.",
+    context:{
+      situation:"Export via window.print() + @media print CSS A4 paysage. Fonctionnel dans Chrome mais grille peut être coupée entre pages, graphiques Chart.js mal ajustés.",
+      pourquoi:"L'export est utilisé pour les bilans mensuels/annuels transmis à la direction. Un document mal mis en page nuit à la crédibilité de l'outil.",
+      comment:["Auditer les 3 exports dans Chrome — noter ce qui est coupé ou mal aligné","Ajouter @page { size: A4 landscape; margin: 10mm; } dans CSS print","Utiliser page-break-inside: avoid sur cards stats et graphiques","Forcer max-height sur les graphiques Chart.js pour impression","Ajouter en-tête de page : établissement, mois, date d'export","Tester les 3 exports et valider"],
+      ameliore:"Exports PDF propres et professionnels, directement utilisables sans retouche manuelle."
+    }
+  },
+  {
+    id:"t8", category:"ux", priority:"medium", status:"todo",
+    dateEcheance:"2026-05-20", dateRetour:"2026-05-15", dateTravail:"2026-05-18",
+    tags:["index.html","Code.gs"], notes:"",
+    title:"Gestion complète des kits consommables",
+    description:"L'onglet Kits existe mais la gestion UI est partielle. Finaliser l'assignation kit par séance et la liste des kits jetés.",
+    context:{
+      situation:"Onglet Kits dans le schéma, checkbox 'Kit jeté' sur la séance — mais pas de gestion du stock, pas de numéro de lot, pas de raison de jet structurée.",
+      pourquoi:"Traçabilité des kits nécessaire pour justifier les coûts auprès de la direction et anticiper les commandes.",
+      comment:["Définir le besoin avec l'équipe : champs par kit (lot, date péremption, raison, séance)","Dans Code.gs : enrichir les fonctions Kits avec les nouveaux champs","Dans index.html : enrichir la saisie 'Kit jeté' dans la modal séance","Dans Analyse : enrichir 'Kits jetés ce mois' avec totaux par raison","Relancer initSheets() si nouvelles colonnes dans la feuille Kits"],
+      ameliore:"Traçabilité complète des consommables coûteux — justification coûts, anticipation commandes."
+    }
+  },
+  {
+    id:"t9", category:"qualite", priority:"high", status:"todo",
+    dateEcheance:"2026-04-15", dateRetour:"2026-04-15", dateTravail:"2026-04-15",
+    tags:["test","qualité"], notes:"",
+    title:"Session chasse aux bugs #1 — scénario bout en bout",
+    description:"Test systématique : créer patient → cycle → valider séances → annuler → désannuler → pause → reprise → clôture auto.",
+    context:{
+      situation:"Jamais eu de session de test bout en bout simulant plusieurs semaines réelles. Des régressions silencieuses peuvent exister sur la logique badges et compteurs.",
+      pourquoi:"Certains bugs n'apparaissent qu'en conditions réelles — renumbering après 3 annulations, compteur déraillant après pause/reprise. Trouver avant que ça impacte de vrais patients.",
+      comment:["Créer un patient fictif 'PATIENT TEST SCENARIO'","Créer cycle 12 séances fréquence hebdomadaire","Valider 3 séances — vérifier badges C1-S1, C1-S2, C1-S3","Annuler séance 4 — vérifier que C1-S5 devient C1-S4, etc.","Désannuler séance 4 — vérifier retour état initial + suppression bonus","Pause → vérifier affichage barré. Reprise → vérifier EN_COURS","Valider jusqu'à 12 — vérifier célébration + clôture auto","Nettoyer le patient de test"],
+      ameliore:"Confiance totale dans la fiabilité du moteur cycle/badge/compteur."
+    }
+  },
+  {
+    id:"t10", category:"qualite", priority:"medium", status:"todo",
+    dateEcheance:"2026-04-15", dateRetour:"2026-04-14", dateTravail:"2026-04-14",
+    tags:["documentation"], notes:"",
+    title:"Mise à jour JOURNAL_TECHNIQUE.md — v17+",
+    description:"Documenter les changements post-essai équipe : nouveaux bugs, décisions, vigilances découvertes.",
+    context:{
+      situation:"Journal maintenu depuis v1, actuellement v16+. Documente erreurs, décisions d'architecture, points de vigilance. Mémoire technique vivante du projet.",
+      pourquoi:"Sans mise à jour régulière, on risque de résoudre deux fois les mêmes bugs ou de réintroduire des régressions déjà corrigées.",
+      comment:["Après chaque session significative : noter ERREUR → symptôme, cause, solution","Documenter les décisions : pourquoi telle approche, alternatives écartées","Mettre à jour la table des versions","Enrichir les points de vigilance si nouveaux pièges Apps Script/Sheets","Partager le journal avec Claude en début de chaque session (fichier joint)"],
+      ameliore:"Continuité du développement. Chaque session repart sur une base documentée."
+    }
+  },
+  {
+    id:"t11", category:"qualite", priority:"medium", status:"todo",
+    dateEcheance:"2026-05-01", dateRetour:"2026-04-25", dateTravail:"2026-04-28",
+    tags:["documentation","terrain"], notes:"",
+    title:"Guide utilisateur pour l'équipe soignante",
+    description:"Guide court et visuel (1-2 pages) : valider une séance, annuler, gérer un cycle, comprendre les badges.",
+    context:{
+      situation:"L'équipe ne connaît pas les subtilités : badge C1-S3, différence pause vs arrêt cycle, que faire si patient absent au dernier moment.",
+      pourquoi:"Sans guide, l'adoption repose sur la formation orale — fragile. Un mauvais geste irréversible (arrêter au lieu de mettre en pause) supprime toutes les séances futures.",
+      comment:["Identifier les 6-8 actions fréquentes du quotidien","Captures d'écran annotées pour chaque action","Expliquer en termes soignants : C1-S3 = 'Cycle 1, Séance 3' ; tandem = 'pendant dialyse'","Section 'Que faire si...' : patient absent, erreur de saisie, séance à déplacer","Format : PDF 2 pages A4 imprimable","Claude peut générer le document Word/PDF une fois le contenu validé"],
+      ameliore:"Autonomie de l'équipe, réduction des erreurs de manipulation, intégration facilitée des nouveaux."
+    }
+  },
+  {
+    id:"t12", category:"perf", priority:"low", status:"todo",
+    dateEcheance:"2026-06-01", dateRetour:"2026-05-25", dateTravail:"2026-05-28",
+    tags:["index.html","performance"], notes:"",
+    title:"Optimiser le rechargement getData() post-action",
+    description:"Sur annulation/désannulation, l'app déclenche un getData() complet — lourd, créant un délai perceptible de 2-3 secondes.",
+    context:{
+      situation:"getData() charge toutes les feuilles en une fois. Sur 6 mois de données + 20 patients actifs : 2-3 secondes de freeze perceptible.",
+      pourquoi:"En milieu soignant où les gestes sont rapides, ce délai casse le rythme et peut inciter à recliquer — créant des double-actions.",
+      comment:["Auditer quelles actions déclenchent un getData() complet vs mise à jour locale","Identifier où un rechargement partiel suffit","Option 1 : créer getSessionsOnly() et getCyclesOnly() dans Code.gs","Option 2 : hash existant pour ne déclencher getData() que si données changées","Mesurer avant/après avec les DevTools Chrome"],
+      ameliore:"Interface fluide et réactive. Reste dans les quotas Apps Script (20 000 appels/jour)."
+    }
+  },
+  {
+    id:"t13", category:"qualite", priority:"medium", status:"todo",
+    dateEcheance:"2026-05-10", dateRetour:"2026-04-20", dateTravail:"2026-04-25",
+    tags:["Code.gs","index.html","AUDIT"], notes:"⚠️ 3 questions à trancher avant tout code — voir contexte étape 1",
+    title:"Statut ARRETE distinct de CLOTURE",
+    description:"stopCycle et closeCycle écrivent tous les deux CLOTURE dans le Sheet. Un cycle interrompu prématurément est indiscernable d'un cycle complété normalement.",
+    context:{
+      situation:"Deux actions UI distinctes écrivent la même valeur CLOTURE dans la colonne Statut de l'onglet Cycles. 'Arrêter le cycle' (stopCycle) = interruption prématurée avec suppression des séances futures. 'Clôturer le cycle' (closeCycle) = fin normale. Dans la donnée brute du Sheet, ces deux cas sont identiques.",
+      pourquoi:"Cette confusion fausse les stats : taux de complétion réel erroné, impossible de savoir combien de cycles ont été interrompus vs terminés normalement. Information clinique importante — un arrêt prématuré fréquent peut signaler un problème de tolérance ou d'organisation.",
+      comment:["QUESTIONS À TRANCHER EN PREMIER : (1) Différencier visuellement dans la liste des cycles ? badge couleur/libellé différent ? (2) Impacte les compteurs stats ? taux complétion, nb cycles réels vs interrompus ? (3) Bloquer certaines actions sur ARRETE vs CLOTURE ?","Ajouter la valeur ARRETE comme statut valide dans le Sheet (colonne Statut de l'onglet Cycles)","Modifier stopCycle() dans Code.gs pour écrire 'ARRETE' au lieu de 'CLOTURE'","AUDIT CRITIQUE : parcourir tous les endroits dans index.html et Code.gs qui testent === 'CLOTURE' ou !== 'EN_COURS' — vérifier si ARRETE doit être inclus ou exclu dans chaque cas","Mettre à jour l'affichage du badge statut dans la liste des cycles (couleur + libellé)","Nouveau déploiement + mettre à jour JOURNAL_TECHNIQUE.md"],
+      ameliore:"Données fiables sur le cycle de vie réel des traitements. Stats mensuelles et annuelles plus pertinentes cliniquement."
+    }
+  }
+];
+
+const CATEGORIES = {
+  feedback:{ label:"Feedback terrain", color:"#f59e0b", bg:"#fef3c7", icon:"💬" },
+  securite:{ label:"Sécurité", color:"#ef4444", bg:"#fee2e2", icon:"🔐" },
+  ux:{ label:"UX / Ergonomie", color:"#8b5cf6", bg:"#ede9fe", icon:"✨" },
+  qualite:{ label:"Qualité / Tests", color:"#10b981", bg:"#d1fae5", icon:"🧪" },
+  perf:{ label:"Performance", color:"#3b82f6", bg:"#dbeafe", icon:"⚡" },
+};
+const PRIORITIES = {
+  critical:{ label:"Critique", color:"#ef4444", dot:"🔴" },
+  high:{ label:"Haute", color:"#f97316", dot:"🟠" },
+  medium:{ label:"Moyenne", color:"#eab308", dot:"🟡" },
+  low:{ label:"Basse", color:"#22c55e", dot:"🟢" },
+};
+const STATUSES = {
+  todo:{ label:"À faire" },
+  inprogress:{ label:"En cours" },
+  waiting:{ label:"En attente" },
+  done:{ label:"Terminé ✓" },
+};
+const STATUS_ORDER = ["todo","inprogress","waiting","done"];
+const PRIORITY_ORDER = ["critical","high","medium","low"];
+
+function fmt(d){ if(!d) return "—"; const [y,m,day]=d.split("-"); return `${day}/${m}/${y}`; }
+function dLeft(d){ if(!d) return null; return Math.ceil((new Date(d)-new Date())/86400000); }
+
+function Chip({date}){
+  const d=dLeft(date); if(d===null) return null;
+  const c=d<0?"#ef4444":d<=3?"#f97316":d<=7?"#eab308":"#94a3b8";
+  const l=d<0?`${Math.abs(d)}j dépassé`:d===0?"Aujourd'hui":`J-${d}`;
+  return React.createElement("span",{style:{fontSize:10,fontWeight:700,color:c,background:`${c}18`,padding:"2px 7px",borderRadius:20}},l);
+}
+
+function CtxPanel({ctx}){
+  const blocks=[
+    {k:"situation",title:"📍 Situation actuelle",color:"#3b82f6",bg:"#f0f9ff"},
+    {k:"pourquoi",title:"🎯 Pourquoi c'est important",color:"#b45309",bg:"#fef9ec"},
+    {k:"ameliore",title:"✨ Ce que ça améliore",color:"#7c3aed",bg:"#fdf4ff"},
+  ];
+  return React.createElement("div",{style:{display:"grid",gap:9}},
+    ...blocks.map(b=>React.createElement("div",{key:b.k,style:{background:b.bg,borderRadius:9,padding:"10px 13px",borderLeft:`3px solid ${b.color}`}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:b.color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:5}},b.title),
+      React.createElement("p",{style:{margin:0,fontSize:12,color:"#334155",lineHeight:1.65}},ctx[b.k])
+    )),
+    React.createElement("div",{style:{background:"#f0fdf4",borderRadius:9,padding:"10px 13px",borderLeft:"3px solid #10b981"}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#047857",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}},"🛠 Comment faire — étapes"),
+      React.createElement("ol",{style:{margin:0,paddingLeft:17,display:"grid",gap:5}},
+        ctx.comment.map((s,i)=>React.createElement("li",{key:i,style:{fontSize:12,color:"#334155",lineHeight:1.55}},s))
+      )
+    )
+  );
+}
+
+function Card({task,onEdit}){
+  const cat=CATEGORIES[task.category]; const done=task.status==="done";
+  const [hover,setHover]=useState(false);
+  return React.createElement("div",{
+    onClick:()=>onEdit(task),
+    onMouseEnter:()=>setHover(true), onMouseLeave:()=>setHover(false),
+    style:{background:done?"#f8fafc":"#fff",border:`1px solid ${done?"#e2e8f0":"#f1f5f9"}`,borderLeft:`3px solid ${done?"#cbd5e1":cat.color}`,borderRadius:10,padding:"11px 13px",cursor:"pointer",transition:"all 0.15s",opacity:done?0.55:1,boxShadow:hover&&!done?"0 4px 14px #0000000e":"none",transform:hover&&!done?"translateY(-1px)":"none"}
+  },
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}},
+      React.createElement("div",{style:{flex:1}},
+        React.createElement("div",{style:{fontSize:13,fontWeight:600,color:done?"#94a3b8":"#1e293b",lineHeight:1.3,textDecoration:done?"line-through":"none"}},`${PRIORITIES[task.priority].dot} ${task.title}`),
+        React.createElement("p",{style:{margin:"4px 0 0",fontSize:11.5,color:"#64748b",lineHeight:1.5}},task.description),
+        React.createElement("div",{style:{display:"flex",gap:5,flexWrap:"wrap",marginTop:6}},
+          React.createElement("span",{style:{fontSize:10,fontWeight:600,color:cat.color,background:cat.bg,padding:"2px 7px",borderRadius:20}},`${cat.icon} ${cat.label}`),
+          task.tags.map(t=>React.createElement("span",{key:t,style:{fontSize:10,color:"#64748b",background:"#f1f5f9",padding:"2px 7px",borderRadius:20}},t))
+        )
+      ),
+      React.createElement("span",{style:{fontSize:10,fontWeight:700,color:"#64748b",background:"#f1f5f9",padding:"3px 9px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0}},STATUSES[task.status].label)
+    ),
+    React.createElement("div",{style:{display:"flex",gap:12,marginTop:8,flexWrap:"wrap"}},
+      task.dateEcheance&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+        React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},"📅"),
+        React.createElement("span",{style:{fontSize:10,fontWeight:600,color:"#475569"}},fmt(task.dateEcheance)),
+        React.createElement(Chip,{date:task.dateEcheance})
+      ),
+      task.dateRetour&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+        React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},"🔁 Retour"),
+        React.createElement("span",{style:{fontSize:10,fontWeight:600,color:"#475569"}},fmt(task.dateRetour))
+      ),
+      task.dateTravail&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+        React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},"🛠"),
+        React.createElement("span",{style:{fontSize:10,fontWeight:600,color:"#475569"}},fmt(task.dateTravail))
+      )
+    ),
+    task.notes&&React.createElement("div",{style:{marginTop:6,fontSize:11,color:"#94a3b8",fontStyle:"italic"}},`💭 ${task.notes}`),
+    React.createElement("div",{style:{marginTop:6,fontSize:10,color:"#d1d5db"}},"👆 Cliquer pour le contexte complet")
+  );
+}
+
+function Modal({task,onSave,onClose,onDelete}){
+  const [form,setForm]=useState({...task});
+  const [tab,setTab]=useState("context");
+  const cat=CATEGORIES[form.category];
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const iS={width:"100%",padding:"7px 10px",border:"1.5px solid #e2e8f0",borderRadius:7,fontFamily:"'Outfit',sans-serif",fontSize:12.5,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box"};
+  const lS={fontSize:10,fontWeight:700,color:"#64748b",letterSpacing:"0.05em",textTransform:"uppercase",marginBottom:4,display:"block"};
+  return React.createElement("div",{
+    onClick:e=>e.target===e.currentTarget&&onClose(),
+    style:{position:"fixed",inset:0,background:"#0009",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}
+  },
+    React.createElement("div",{style:{background:"#fff",borderRadius:15,width:"100%",maxWidth:700,maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 80px #0003"}},
+      React.createElement("div",{style:{padding:"13px 17px 10px",borderBottom:"1px solid #f1f5f9",flexShrink:0}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}},
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{display:"flex",gap:5,alignItems:"center",marginBottom:3}},
+              React.createElement("span",{style:{fontSize:10.5,fontWeight:600,color:cat.color,background:cat.bg,padding:"2px 8px",borderRadius:20}},`${cat.icon} ${cat.label}`),
+              React.createElement("span",{style:{fontSize:10.5}},`${PRIORITIES[form.priority].dot} ${PRIORITIES[form.priority].label}`)
+            ),
+            React.createElement("h3",{style:{margin:0,fontSize:14,fontWeight:700,color:"#1e293b",lineHeight:1.3}},form.title)
+          ),
+          React.createElement("div",{style:{display:"flex",gap:5,flexShrink:0}},
+            React.createElement("select",{value:form.status,onChange:e=>set("status",e.target.value),style:{padding:"4px 7px",borderRadius:7,border:"1.5px solid #e2e8f0",fontSize:11,color:"#475569",background:"#f8fafc",cursor:"pointer"}},
+              Object.entries(STATUSES).map(([k,v])=>React.createElement("option",{key:k,value:k},v.label))
+            ),
+            React.createElement("button",{onClick:()=>onDelete(task.id),style:{padding:"4px 9px",borderRadius:7,border:"1.5px solid #fecaca",background:"#fff",color:"#ef4444",fontSize:11,fontWeight:600,cursor:"pointer"}},"✕"),
+            React.createElement("button",{onClick:onClose,style:{padding:"4px 9px",borderRadius:7,border:"1.5px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:600,cursor:"pointer"}},"Fermer"),
+            React.createElement("button",{onClick:()=>onSave(form),style:{padding:"4px 12px",borderRadius:7,border:"none",background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}},"Sauvegarder")
+          )
+        ),
+        React.createElement("div",{style:{display:"flex",gap:2,marginTop:9,background:"#f1f5f9",borderRadius:7,padding:3,width:"fit-content"}},
+          [["context","📋 Contexte"],["edit","✏️ Modifier"],["dates","📅 Dates"]].map(([v,l])=>
+            React.createElement("button",{key:v,onClick:()=>setTab(v),style:{padding:"4px 11px",borderRadius:5,border:"none",background:tab===v?"#fff":"transparent",color:tab===v?"#1e293b":"#64748b",fontSize:11,fontWeight:tab===v?700:500,cursor:"pointer"}},l)
+          )
+        )
+      ),
+      React.createElement("div",{style:{flex:1,overflowY:"auto",padding:"13px 17px 18px"}},
+        tab==="context"&&React.createElement("div",null,
+          React.createElement("p",{style:{margin:"0 0 11px",fontSize:12.5,color:"#475569",lineHeight:1.6}},form.description),
+          form.context&&React.createElement(CtxPanel,{ctx:form.context}),
+          form.notes&&React.createElement("div",{style:{marginTop:9,background:"#fffbeb",borderRadius:9,padding:"9px 13px",borderLeft:"3px solid #f59e0b"}},
+            React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#b45309",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:3}},"💭 Notes internes"),
+            React.createElement("p",{style:{margin:0,fontSize:12,color:"#334155"}},form.notes)
+          )
+        ),
+        tab==="edit"&&React.createElement("div",{style:{display:"grid",gap:12}},
+          React.createElement("div",null,React.createElement("label",{style:lS},"Titre"),React.createElement("input",{style:iS,value:form.title,onChange:e=>set("title",e.target.value)})),
+          React.createElement("div",null,React.createElement("label",{style:lS},"Description"),React.createElement("textarea",{style:{...iS,minHeight:52,resize:"vertical"},value:form.description,onChange:e=>set("description",e.target.value)})),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+            React.createElement("div",null,React.createElement("label",{style:lS},"Catégorie"),React.createElement("select",{style:iS,value:form.category,onChange:e=>set("category",e.target.value)},Object.entries(CATEGORIES).map(([k,v])=>React.createElement("option",{key:k,value:k},`${v.icon} ${v.label}`)))),
+            React.createElement("div",null,React.createElement("label",{style:lS},"Priorité"),React.createElement("select",{style:iS,value:form.priority,onChange:e=>set("priority",e.target.value)},Object.entries(PRIORITIES).map(([k,v])=>React.createElement("option",{key:k,value:k},`${v.dot} ${v.label}`))))
+          ),
+          React.createElement("div",null,React.createElement("label",{style:lS},"Tags (virgule)"),React.createElement("input",{style:iS,value:form.tags.join(", "),onChange:e=>set("tags",e.target.value.split(",").map(t=>t.trim()).filter(Boolean))})),
+          React.createElement("div",null,React.createElement("label",{style:lS},"Notes internes"),React.createElement("textarea",{style:{...iS,minHeight:56,resize:"vertical"},value:form.notes||"",onChange:e=>set("notes",e.target.value)}))
+        ),
+        tab==="dates"&&React.createElement("div",{style:{display:"grid",gap:11}},
+          [
+            {key:"dateEcheance",label:"📅 Date d'échéance",color:"#047857",bg:"#f0fdf4",desc:"Date limite pour que cette tâche soit terminée."},
+            {key:"dateRetour",label:"🔁 Retour attendu de ta part",color:"#1d4ed8",bg:"#f0f9ff",desc:"Date à laquelle tu dois me faire un retour."},
+            {key:"dateTravail",label:"🛠 Session de travail prévue",color:"#7c3aed",bg:"#fdf4ff",desc:"Jour où on travaille ensemble sur cette tâche."},
+          ].map(d=>React.createElement("div",{key:d.key,style:{background:d.bg,borderRadius:9,padding:"11px 13px"}},
+            React.createElement("label",{style:{...lS,color:d.color}},d.label),
+            React.createElement("input",{type:"date",style:iS,value:form[d.key]||"",onChange:e=>set(d.key,e.target.value)}),
+            form[d.key]&&React.createElement("div",{style:{marginTop:5}},React.createElement(Chip,{date:form[d.key]})),
+            React.createElement("p",{style:{margin:"6px 0 0",fontSize:11,color:"#64748b"}},d.desc)
+          ))
+        )
+      )
+    )
+  );
+}
+
+function App(){
+  const [tasks,setTasks]=useState(INITIAL_TASKS);
+  const [edit,setEdit]=useState(null);
+  const [showAdd,setShowAdd]=useState(false);
+  const [fCat,setFCat]=useState("all");
+  const [fStat,setFStat]=useState("all");
+  const [fPri,setFPri]=useState("all");
+  const [view,setView]=useState("list");
+  const [loaded,setLoaded]=useState(false);
+
+  useEffect(()=>{
+    try{ const s=localStorage.getItem(STORAGE_KEY); if(s) setTasks(JSON.parse(s)); }catch(e){}
+    setLoaded(true);
+  },[]);
+
+  const save=useCallback(t=>{ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(t)); }catch(e){} },[]);
+  const upd=t=>{ setTasks(t); save(t); };
+  const handleSave=f=>{ upd(tasks.map(t=>t.id===f.id?f:t)); setEdit(null); };
+  const handleDelete=id=>{ upd(tasks.filter(t=>t.id!==id)); setEdit(null); };
+  const handleAdd=f=>{ upd([...tasks,{...f,id:`t${Date.now()}`}]); setShowAdd(false); };
+
+  const filtered=tasks.filter(t=>(fCat==="all"||t.category===fCat)&&(fStat==="all"||t.status===fStat)&&(fPri==="all"||t.priority===fPri));
+  const sorted=[...filtered].sort((a,b)=>{ const si=STATUS_ORDER,pi=PRIORITY_ORDER; return si.indexOf(a.status)-si.indexOf(b.status)||pi.indexOf(a.priority)-pi.indexOf(b.priority); });
+  const byS=STATUS_ORDER.reduce((acc,s)=>({...acc,[s]:sorted.filter(t=>t.status===s)}),{});
+  const stats={ total:tasks.length, done:tasks.filter(t=>t.status==="done").length, crit:tasks.filter(t=>t.priority==="critical"&&t.status!=="done").length, late:tasks.filter(t=>t.dateEcheance&&dLeft(t.dateEcheance)<0&&t.status!=="done").length };
+
+  const selS={padding:"5px 8px",borderRadius:7,border:"1.5px solid #e2e8f0",fontSize:11,color:"#475569",background:"#fff",cursor:"pointer"};
+
+  if(!loaded) return React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",color:"#94a3b8"}},"Chargement…");
+
+  return React.createElement("div",{style:{fontFamily:"'Outfit',sans-serif",background:"#f8fafc",minHeight:"100vh"}},
+    // Header
+    React.createElement("div",{style:{background:"#fff",borderBottom:"1px solid #e2e8f0",padding:"12px 22px",position:"sticky",top:0,zIndex:100}},
+      React.createElement("div",{style:{maxWidth:1100,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}},
+        React.createElement("div",null,
+          React.createElement("h1",{style:{margin:0,fontSize:17,fontWeight:800,color:"#1e293b",letterSpacing:"-0.02em"}},"🩺 RhéoPlan ",React.createElement("span",{style:{color:"#6366f1"}},"— Suivi Dev")),
+          React.createElement("p",{style:{margin:0,fontSize:10,color:"#94a3b8",marginTop:1}},"clinifutur.net · Cliquer une tâche pour le contexte complet")
+        ),
+        React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
+          [{label:"Total",value:stats.total,color:"#6366f1"},{label:"Terminé",value:stats.done,color:"#22c55e"},{label:"Critique",value:stats.crit,color:"#ef4444"},{label:"En retard",value:stats.late,color:"#f97316"}].map(s=>
+            React.createElement("div",{key:s.label,style:{background:`${s.color}12`,border:`1.5px solid ${s.color}30`,borderRadius:8,padding:"2px 10px",textAlign:"center"}},
+              React.createElement("div",{style:{fontSize:15,fontWeight:800,color:s.color,lineHeight:1}},s.value),
+              React.createElement("div",{style:{fontSize:9,fontWeight:600,color:s.color,textTransform:"uppercase",letterSpacing:"0.05em"}},s.label)
+            )
+          ),
+          React.createElement("button",{onClick:()=>setShowAdd(true),style:{padding:"6px 14px",borderRadius:8,border:"none",background:"#6366f1",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}},"+ Ajouter")
+        )
+      )
+    ),
+    // Filters
+    React.createElement("div",{style:{maxWidth:1100,margin:"0 auto",padding:"12px 22px 0"}},
+      React.createElement("div",{style:{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}},
+        React.createElement("div",{style:{display:"flex",gap:5,flexWrap:"wrap"}},
+          React.createElement("select",{value:fCat,onChange:e=>setFCat(e.target.value),style:selS},
+            React.createElement("option",{value:"all"},"Toutes catégories"),
+            Object.entries(CATEGORIES).map(([k,v])=>React.createElement("option",{key:k,value:k},`${v.icon} ${v.label}`))
+          ),
+          React.createElement("select",{value:fStat,onChange:e=>setFStat(e.target.value),style:selS},
+            React.createElement("option",{value:"all"},"Tous statuts"),
+            Object.entries(STATUSES).map(([k,v])=>React.createElement("option",{key:k,value:k},v.label))
+          ),
+          React.createElement("select",{value:fPri,onChange:e=>setFPri(e.target.value),style:selS},
+            React.createElement("option",{value:"all"},"Toutes priorités"),
+            Object.entries(PRIORITIES).map(([k,v])=>React.createElement("option",{key:k,value:k},`${v.dot} ${v.label}`))
+          )
+        ),
+        React.createElement("div",{style:{display:"flex",gap:3,background:"#f1f5f9",borderRadius:7,padding:3}},
+          [["list","☰ Liste"],["kanban","⬛ Kanban"]].map(([v,l])=>
+            React.createElement("button",{key:v,onClick:()=>setView(v),style:{padding:"4px 10px",borderRadius:5,border:"none",background:view===v?"#fff":"transparent",color:view===v?"#1e293b":"#64748b",fontSize:11,fontWeight:view===v?700:500,cursor:"pointer"}},l)
+          )
+        )
+      ),
+      React.createElement("div",{style:{marginTop:9}},
+        React.createElement("div",{style:{background:"#e2e8f0",borderRadius:99,height:5,overflow:"hidden"}},
+          React.createElement("div",{style:{height:"100%",width:`${stats.total?(stats.done/stats.total)*100:0}%`,background:"linear-gradient(90deg,#6366f1,#22c55e)",borderRadius:99,transition:"width 0.4s"}})
+        ),
+        React.createElement("div",{style:{fontSize:10,color:"#94a3b8",marginTop:3,textAlign:"right"}},`${stats.done}/${stats.total} tâches (${stats.total?Math.round((stats.done/stats.total)*100):0}%)`)
+      )
+    ),
+    // Content
+    React.createElement("div",{style:{maxWidth:1100,margin:"0 auto",padding:"11px 22px 40px"}},
+      view==="list"
+        ? React.createElement("div",{style:{display:"grid",gap:7}},sorted.length===0?React.createElement("div",{style:{textAlign:"center",color:"#94a3b8",padding:48}},"Aucune tâche."):sorted.map(t=>React.createElement(Card,{key:t.id,task:t,onEdit:setEdit})))
+        : React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:13,alignItems:"start"}},
+            STATUS_ORDER.map(s=>React.createElement("div",{key:s},
+              React.createElement("div",{style:{marginBottom:8,display:"flex",alignItems:"center",gap:5}},
+                React.createElement("span",{style:{fontWeight:700,fontSize:10.5,color:"#475569",textTransform:"uppercase",letterSpacing:"0.06em"}},STATUSES[s].label),
+                React.createElement("span",{style:{background:"#e2e8f0",borderRadius:99,padding:"1px 7px",fontSize:10.5,fontWeight:700,color:"#64748b"}},byS[s].length)
+              ),
+              React.createElement("div",{style:{display:"grid",gap:6}},
+                byS[s].map(t=>React.createElement(Card,{key:t.id,task:t,onEdit:setEdit})),
+                byS[s].length===0&&React.createElement("div",{style:{border:"2px dashed #e2e8f0",borderRadius:9,padding:16,textAlign:"center",color:"#cbd5e1",fontSize:11}},"Vide")
+              )
+            ))
+          )
+    ),
+    edit&&React.createElement(Modal,{task:edit,onSave:handleSave,onClose:()=>setEdit(null),onDelete:handleDelete}),
+    showAdd&&React.createElement(AddModal,{onSave:handleAdd,onClose:()=>setShowAdd(false)})
+  );
+}
+
+function AddModal({onSave,onClose}){
+  const [form,setForm]=useState({title:"",description:"",category:"qualite",priority:"medium",status:"todo",tags:[],notes:"",dateEcheance:"",dateRetour:"",dateTravail:"",context:{situation:"",pourquoi:"",comment:[""],ameliore:""}});
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const iS={width:"100%",padding:"7px 10px",border:"1.5px solid #e2e8f0",borderRadius:7,fontFamily:"'Outfit',sans-serif",fontSize:12.5,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box"};
+  const lS={fontSize:10,fontWeight:700,color:"#64748b",letterSpacing:"0.05em",textTransform:"uppercase",marginBottom:4,display:"block"};
+  return React.createElement("div",{onClick:e=>e.target===e.currentTarget&&onClose(),style:{position:"fixed",inset:0,background:"#0009",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}},
+    React.createElement("div",{style:{background:"#fff",borderRadius:15,width:"100%",maxWidth:600,maxHeight:"90vh",overflow:"auto",boxShadow:"0 24px 80px #0003"}},
+      React.createElement("div",{style:{padding:"13px 17px",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:"#fff",zIndex:1}},
+        React.createElement("h3",{style:{margin:0,fontSize:14,fontWeight:700,color:"#1e293b"}},"+ Nouvelle tâche"),
+        React.createElement("div",{style:{display:"flex",gap:7}},
+          React.createElement("button",{onClick:onClose,style:{padding:"5px 11px",borderRadius:7,border:"1.5px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:600,cursor:"pointer"}},"Fermer"),
+          React.createElement("button",{onClick:()=>form.title.trim()&&onSave(form),style:{padding:"5px 13px",borderRadius:7,border:"none",background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}},"Ajouter")
+        )
+      ),
+      React.createElement("div",{style:{padding:"13px 17px",display:"grid",gap:12}},
+        React.createElement("div",null,React.createElement("label",{style:lS},"Titre *"),React.createElement("input",{style:iS,value:form.title,placeholder:"Intitulé…",onChange:e=>set("title",e.target.value)})),
+        React.createElement("div",null,React.createElement("label",{style:lS},"Description"),React.createElement("textarea",{style:{...iS,minHeight:48,resize:"vertical"},value:form.description,onChange:e=>set("description",e.target.value)})),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+          React.createElement("div",null,React.createElement("label",{style:lS},"Catégorie"),React.createElement("select",{style:iS,value:form.category,onChange:e=>set("category",e.target.value)},Object.entries(CATEGORIES).map(([k,v])=>React.createElement("option",{key:k,value:k},`${v.icon} ${v.label}`)))),
+          React.createElement("div",null,React.createElement("label",{style:lS},"Priorité"),React.createElement("select",{style:iS,value:form.priority,onChange:e=>set("priority",e.target.value)},Object.entries(PRIORITIES).map(([k,v])=>React.createElement("option",{key:k,value:k},`${v.dot} ${v.label}`))))
+        ),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9}},
+          React.createElement("div",null,React.createElement("label",{style:lS},"📅 Échéance"),React.createElement("input",{type:"date",style:iS,value:form.dateEcheance,onChange:e=>set("dateEcheance",e.target.value)})),
+          React.createElement("div",null,React.createElement("label",{style:lS},"🔁 Retour"),React.createElement("input",{type:"date",style:iS,value:form.dateRetour,onChange:e=>set("dateRetour",e.target.value)})),
+          React.createElement("div",null,React.createElement("label",{style:lS},"🛠 Session"),React.createElement("input",{type:"date",style:iS,value:form.dateTravail,onChange:e=>set("dateTravail",e.target.value)}))
+        ),
+        React.createElement("div",null,React.createElement("label",{style:lS},"Tags (virgule)"),React.createElement("input",{style:iS,placeholder:"Code.gs, index.html…",onChange:e=>set("tags",e.target.value.split(",").map(t=>t.trim()).filter(Boolean))})),
+        React.createElement("div",null,React.createElement("label",{style:lS},"Notes"),React.createElement("textarea",{style:{...iS,minHeight:40,resize:"vertical"},value:form.notes,onChange:e=>set("notes",e.target.value)}))
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
